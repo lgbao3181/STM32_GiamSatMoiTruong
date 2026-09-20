@@ -1,192 +1,493 @@
-# ESP32S3_Distance_SoftUART Project
+# Dự án STM32F103C8T6 – Giám sát nhiệt độ, độ ẩm và rò rỉ khí gas
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-[![STM32](https://img.shields.io/badge/STM32-F103C8T6-blue)](https://www.st.com/en/microcontrollers-microprocessors/stm32f103c8.html)
-[![CubeIDE](https://img.shields.io/badge/IDE-STM32CubeIDE-darkblue)](http://st.com/en/development-tools/stm32cubeide.html)
-[![ESP8266](https://img.shields.io/badge/NodeMCU-ESP8266-orange)](https://www.espressif.com/en/products/socs/esp8266)
+![STM32F103C8T6](https://img.shields.io/badge/MCU-STM32F103C8T6-blue)
+![STM32CubeMX](https://img.shields.io/badge/STM32-STM32CubeMX-green)
+![PlatformIO](https://img.shields.io/badge/Build-PlatformIO-orange)
+![I2C](https://img.shields.io/badge/Communication-I2C-lightgrey)
+![UART](https://img.shields.io/badge/Communication-UART-green)
+![.NET WinForms](https://img.shields.io/badge/PC%20App-.NET%20WinForms-darkblue)
 
-## Project Overview
+## Giới thiệu
 
-An embedded distance measurement and monitoring system built around the ESP32-S3. The system uses a US-100 ultrasonic sensor to measure distance and communicates with a Windows application through a custom Software UART interface.
+Đây là một dự án **Embedded Systems** sử dụng **STM32F103C8T6** làm vi điều khiển trung tâm để xây dựng hệ thống **giám sát nhiệt độ, độ ẩm và phát hiện rò rỉ khí gas**.
 
-The ESP32-S3 handles sensor communication using its hardware UART while implementing a Software UART for communication with a PC. Distance measurements and command responses are transmitted using a custom data frame format with CRC16 (Modbus) for data integrity and error detection.
+Firmware được phát triển bằng cách kết hợp **STM32CubeMX** để cấu hình phần cứng, ngoại vi và mã khởi tạo với **PlatformIO** để quản lý project, biên dịch và nạp firmware.
 
-A C# WinForms application can be used as the PC-side interface to receive, display, and exchange data with the ESP32-S3 in real time.
+Hệ thống sử dụng:
 
-The main objective of this project is to demonstrate practical embedded communication techniques, including hardware UART, Software UART, serial communication, custom data framing, CRC16 error checking, and MCU-to-PC communication.
+* **AHT20** giao tiếp **I2C** để đo nhiệt độ và độ ẩm.
+* **MQ-2** để phát hiện khí gas/khói và đưa tín hiệu cảnh báo về STM32.
+* **LCD 16x2 giao tiếp I2C** để hiển thị nhiệt độ, độ ẩm và trạng thái cảnh báo.
+* **Mạch chuyển mức logic 5V ↔ 3.3V** để bảo đảm tương thích mức điện áp giữa các thiết bị ngoại vi 5V và STM32F103C8T6.
+* **Relay 5V** để điều khiển tải/đèn cảnh báo **220V**.
+* **UART** để truyền dữ liệu đo được từ STM32 lên PC.
+* **Ứng dụng C# WinForms tự xây dựng** trên PC để hiển thị nhiệt độ, độ ẩm, trạng thái rò rỉ khí gas và đưa ra cảnh báo khi giá trị vượt ngưỡng cài đặt.
 
-## Video Demonstrations
+Mục tiêu của dự án là xây dựng một hệ thống giám sát thực tế, đồng thời thực hành các kỹ năng **STM32, I2C, ADC/GPIO, UART, điều khiển relay, xử lý ngưỡng cảnh báo và giao tiếp giữa MCU với phần mềm PC**.
 
-https://github.com/user-attachments/assets/dbce4fbd-9232-4349-a6b2-657dd52cdb27
+---
 
-*Hardware Connection*
+## Video minh họa
 
-https://github.com/user-attachments/assets/ffbd0b4b-3688-4bb0-8ef7-bbc035a9ca31
+[![Xem video](https://img.youtube.com/vi/TBA_9MDTWb8/hqdefault.jpg)](https://youtube.com/shorts/TBA_9MDTWb8)
 
-*UART Output showing device connecting to wifi and getting ip address*
+---
 
-## Project Schematic
+## Sơ đồ nguyên lý
 
-![schematic diagram](https://github.com/user-attachments/assets/6c5f4e55-692b-443c-bb82-c000e2a8ac29)
+![Sơ đồ nguyên lý](demo/Schematic.svg)
 
-## Hardware Components
+Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ thống:
 
-| Component                | Quantity | Purpose                                                                 |
-| ------------------------ | -------- | ----------------------------------------------------------------------- |
-| ESP32-S3                 | 1        | Main microcontroller running the application and Software UART          |
-| US-100 Ultrasonic Sensor | 1        | Measures distance and communicates with ESP32-S3 via hardware UART      |
-| USB-to-UART Converter    | 1        | Provides serial communication between ESP32-S3 Software UART and the PC |
-| PC / Laptop              | 1        | Runs the C# WinForms application for monitoring and communication       |
+* **STM32F103C8T6**: MCU trung tâm, thực hiện đọc cảm biến, xử lý điều kiện cảnh báo, điều khiển LCD, relay và truyền dữ liệu UART.
+* **AHT20**: cảm biến nhiệt độ và độ ẩm, giao tiếp với STM32 thông qua I2C.
+* **LCD 16x2 + module I2C**: hiển thị thông tin đo được và trạng thái cảnh báo.
+* **MQ-2**: cảm biến dùng để phát hiện khí gas/khói; tín hiệu từ module được đưa qua mạch chuyển mức phù hợp trước khi vào MCU.
+* **Mạch chuyển mức 5V ↔ 3.3V**: chuyển đổi mức logic giữa các thiết bị ngoại vi và STM32F103C8T6, đặc biệt trên tuyến giao tiếp I2C và tín hiệu từ module MQ-2 theo thiết kế thực tế.
+* **Relay 5V**: nhận tín hiệu điều khiển từ mạch driver/MCU để đóng cắt tải cảnh báo 220V.
+* **USB–UART / UART**: cầu nối truyền dữ liệu giữa STM32 và PC.
 
-## Pin Configuration
+> Hình ảnh schematic trong thư mục `demo` dùng để minh họa thiết kế phần cứng. Cấu hình chân thực tế cần đối chiếu với project STM32CubeMX/PlatformIO tương ứng.
 
-### US-100 to ESP32-S3 (Hardware UART)
+---
 
-| ESP32-S3 Pin | Function | US-100 Pin | Notes                                               |
-| ------------ | -------- | ---------- | --------------------------------------------------- |
-| **GPIO17**   | UART RX  | **TX**     | ESP32-S3 receives distance data from US-100         |
-| **GPIO18**   | UART TX  | **RX**     | ESP32-S3 sends measurement command to US-100        |
-| **GND**      | Ground   | **GND**    | **Must be connected!**                              |
-| **5V / VCC** | Power    | **VCC**    | Supply according to the US-100 module specification |
+## Sơ đồ mạch in (PCB) minh họa
 
-### Software UART to PC
+![Sơ đồ PCB minh họa](demo/PCB.svg)
 
-| ESP32-S3 Pin | Function         | USB-UART Converter | Purpose                            |
-| ------------ | ---------------- | ------------------ | ---------------------------------- |
-| **GPIO43**   | Software UART TX | **RX**             | ESP32-S3 sends distance data to PC |
-| **GPIO44**   | Software UART RX | **TX**             | ESP32-S3 receives commands from PC |
-| **GND**      | Ground           | **GND**            | **Must be connected!**             |
+PCB được thiết kế dựa trên sơ đồ nguyên lý nhằm thể hiện quá trình chuyển từ thiết kế mạch điện sang bố trí mạch in.
 
+Thiết kế có thể bao gồm:
 
-## ESP32-S3 Communication Architecture
+* Bố trí STM32F103C8T6 và các đầu nối ngoại vi.
+* Khu vực cảm biến AHT20 và module MQ-2.
+* Mạch LCD I2C và mạch chuyển mức logic 5V ↔ 3.3V.
+* Mạch điều khiển relay 5V.
+* Đầu nối UART/USB–UART với PC.
+* Routing các đường tín hiệu, nguồn và GND.
+* Phân tách và bố trí phần điều khiển điện áp thấp với phần tải 220V theo thiết kế thực tế.
+* Kiểm tra kết nối giữa Schematic và PCB.
 
-### System Architecture
+> Hình ảnh PCB trong thư mục `demo` dùng để minh họa thiết kế và bố trí mạch, không phải file Gerber sản xuất.
+
+---
+
+## Thành phần phần cứng
+
+| Thành phần | Số lượng | Vai trò |
+| ------------------------------ | -------: | ----------------------------------------------- |
+| STM32F103C8T6 | 1 | MCU trung tâm, xử lý dữ liệu và điều khiển hệ thống |
+| AHT20 | 1 | Đo nhiệt độ và độ ẩm qua I2C |
+| LCD 16x2 + module I2C | 1 | Hiển thị nhiệt độ, độ ẩm và cảnh báo |
+| MQ-2 | 1 | Phát hiện khí gas/khói |
+| Mạch chuyển mức 5V ↔ 3.3V | 1 | Tương thích mức logic giữa ngoại vi và STM32 |
+| Relay 5V | 1 | Đóng/cắt tải cảnh báo |
+| Đèn/tải 220V | 1 | Cảnh báo bằng tín hiệu đèn |
+| USB–UART Converter | 1 | Cầu nối UART giữa STM32 và PC |
+| PC / Laptop | 1 | Chạy ứng dụng WinForms để giám sát |
+
+---
+
+## Cấu hình giao tiếp và chân
+
+> Một số chân GPIO phụ thuộc trực tiếp vào file cấu hình STM32CubeMX và project PlatformIO. Bảng dưới đây mô tả **chức năng giao tiếp**, còn số chân cụ thể nên lấy theo schematic/.ioc của phiên bản project đang sử dụng.
+
+### AHT20 – STM32F103C8T6 (I2C)
+
+| STM32 | Chức năng | AHT20 | Ghi chú |
+| -------------------------------- | ------- | ----- | ------------------------------------------------ |
+| GPIO I2C_SCL | I2C Clock | SCL | Đường xung clock |
+| GPIO I2C_SDA | I2C Data | SDA | Đường dữ liệu |
+| 3.3V | Nguồn | VCC | Cấp nguồn theo thiết kế |
+| GND | Mass | GND | **Bắt buộc nối chung** |
+
+### LCD 16x2 – Module I2C – STM32
+
+| STM32 / Bus | Chức năng | LCD I2C | Ghi chú |
+| ---------------- | --------- | ------- | ------------------------------------------ |
+| I2C SDA | Data | SDA | Đi qua mạch chuyển mức nếu module LCD chạy 5V |
+| I2C SCL | Clock | SCL | Đi qua mạch chuyển mức nếu module LCD chạy 5V |
+| GND | Mass | GND | **Bắt buộc nối chung ở phía logic** |
+| 5V | Nguồn LCD | VCC | Theo thiết kế phần cứng của module LCD |
+
+### MQ-2 – STM32F103C8T6
+
+| Tín hiệu | Chức năng | Kết nối MCU | Ghi chú |
+| -------- | --------- | ----------- | ---------------------------------------------- |
+| DO | Digital Output | GPIO input | Dùng để xác định trạng thái cảnh báo gas |
+| AO* | Analog Output | ADC* | Chỉ sử dụng nếu project có đọc giá trị analog |
+| VCC | Nguồn | 5V | Theo module MQ-2 |
+| GND | Mass | GND | Nối chung với hệ thống |
+
+\* Tín hiệu **AO/ADC** chỉ áp dụng nếu phần cứng và firmware của project có triển khai đo analog. Với cấu hình giám sát rò rỉ đơn giản, hệ thống có thể sử dụng **DO** làm tín hiệu cảnh báo.
+
+> Vì MQ-2 module thường hoạt động ở mức 5V, cần bảo đảm tín hiệu đưa vào GPIO/ADC của STM32 không vượt quá mức điện áp cho phép. Mạch chuyển mức/giảm áp phải phù hợp với loại tín hiệu được sử dụng.
+
+### Relay 5V – STM32F103C8T6
+
+| Tín hiệu | Chức năng | MCU | Ghi chú |
+| -------- | --------- | --- | -------------------------------------------- |
+| RELAY_CTRL | Điều khiển relay | GPIO output | Điều khiển relay thông qua mạch driver nếu cần |
+| VCC | Nguồn relay | 5V | Cấp nguồn theo module relay |
+| GND | Mass | GND | Nối chung phía điều khiển |
+
+Relay được sử dụng để đóng/cắt tải cảnh báo **220V** như đèn báo.
+
+> **Cảnh báo an toàn:** phần tải 220V phải được cách ly và đấu nối đúng kỹ thuật. Không thao tác phần điện lưới khi đang cấp điện; ưu tiên sử dụng hộp bảo vệ, cầu chì/bảo vệ quá dòng và khoảng cách cách điện phù hợp.
+
+### UART – STM32 ↔ PC
+
+| STM32 | Chức năng | USB–UART Converter | Mục đích |
+| -------- | ------- | ------------------ | -------------------------------- |
+| UART_TX | Transmit | RX | STM32 gửi dữ liệu lên PC |
+| UART_RX | Receive | TX | STM32 nhận dữ liệu từ PC nếu cần |
+| GND | Mass | GND | **Bắt buộc nối chung** |
+
+---
+
+## Hệ thống giám sát và cảnh báo — phần trọng tâm của dự án
+
+Mỗi chu kỳ hoạt động, firmware thực hiện việc đọc dữ liệu từ cảm biến, cập nhật LCD, kiểm tra các điều kiện cảnh báo, điều khiển relay/đèn và truyền dữ liệu lên PC.
+
+### 1. Đọc nhiệt độ và độ ẩm từ AHT20
+
+AHT20 giao tiếp với STM32F103C8T6 thông qua **I2C**.
+
+Firmware thực hiện:
+
+1. Gửi lệnh đo tới AHT20.
+2. Chờ cảm biến hoàn thành phép đo.
+3. Đọc dữ liệu nhiệt độ và độ ẩm qua I2C.
+4. Chuyển đổi dữ liệu sang giá trị nhiệt độ/độ ẩm để hiển thị và xử lý.
+
+Các giá trị này được sử dụng đồng thời cho **LCD tại thiết bị** và **ứng dụng WinForms trên PC**.
+
+### 2. Phát hiện rò rỉ khí gas bằng MQ-2
+
+MQ-2 được sử dụng làm tín hiệu phát hiện khí gas/khói. Trong cấu hình sử dụng ngõ ra số, firmware đọc trạng thái **DO** thông qua GPIO.
+
+Khi tín hiệu gas đạt trạng thái cảnh báo:
+
+* LCD hiển thị thông báo **rò rỉ khí gas**.
+* Hệ thống kích hoạt **đèn/tải 220V thông qua relay 5V**.
+* Trạng thái gas được truyền lên PC.
+* Ứng dụng WinForms hiển thị cảnh báo tương ứng.
+
+> Ngưỡng phát hiện thực tế của MQ-2 phụ thuộc module, mạch, thời gian làm nóng và cách hiệu chỉnh cảm biến. Vì vậy trạng thái DO trong project nên được xem là **tín hiệu cảnh báo theo cấu hình phần cứng**, không phải một giá trị nồng độ ppm tuyệt đối nếu chưa có quy trình hiệu chuẩn.
+
+### 3. Cảnh báo nhiệt độ vượt ngưỡng
+
+Firmware có thể kiểm tra nhiệt độ đo được với giới hạn cài đặt trong chương trình.
+
+Ví dụ:
 
 ```text
-┌─────────────────────┐
-│   C# WinForms App   │
-│  PC Monitoring UI   │
-└──────────┬──────────┘
-           │ Software UART
-           │ @DATA:CRC&
-           ▼
-┌─────────────────────┐
-│      ESP32-S3       │
-│                     │
-│ ┌─────────────────┐ │
-│ │  Software UART  │ │
-│ │   + CRC16       │ │
-│ └────────┬────────┘ │
-│          │          │
-│ ┌────────▼────────┐ │
-│ │  Hardware UART  │ │
-│ └────────┬────────┘ │
-└──────────┼──────────┘
-           │ UART
-           ▼
-┌─────────────────────┐
-│       US-100        │
-│ Ultrasonic Sensor   │
-└─────────────────────┘
+Nhiệt độ > giới hạn
+        │
+        ▼
+   Kích hoạt cảnh báo
+        │
+   ┌────┴─────────────┐
+   ▼                  ▼
+LCD cảnh báo      Relay / đèn
 ```
 
-### Communication Workflow
+Ngưỡng nhiệt độ nên được định nghĩa bằng hằng số/biến cấu hình để dễ thay đổi mà không phải sửa nhiều vị trí trong mã nguồn.
 
-1. **Initialization**
+### 4. Hiển thị LCD 16x2
 
-   * Initialize the US-100 Hardware UART.
-   * Configure the Software UART for PC communication.
+LCD được sử dụng để cung cấp thông tin trực tiếp tại thiết bị, giúp hệ thống có thể hoạt động mà không cần PC liên tục.
 
-2. **Distance Measurement**
+Nội dung hiển thị có thể được tổ chức theo các trạng thái:
 
-   * Send `0x55` to the US-100.
-   * Read and validate the 2-byte distance value.
+```text
++----------------+
+| T: 28.5 C      |
+| H: 65.2 %      |
++----------------+
+```
 
-3. **Data Transmission**
+Khi có sự cố, LCD chuyển sang thông báo cảnh báo, ví dụ:
 
-   * Calculate CRC16 (Modbus).
-   * Send the measurement using `@DATA:CRC&`.
+```text
++----------------+
+| CANH BAO      |
+| RO RI KHI GAS |
++----------------+
+```
 
-4. **PC Communication**
+### 5. Điều khiển relay và đèn cảnh báo 220V
 
-   * Receive and parse commands from the WinForms application.
-   * Verify the received CRC.
-   * Return the data or `CRC_FAIL`.
+STM32 xuất tín hiệu điều khiển tới relay 5V. Relay đóng/cắt tải cảnh báo ở phía điện áp cao.
 
-5. **Continuous Operation**
+Luồng điều khiển:
 
-   * Measure distance periodically.
-   * Handle PC communication concurrently during operation.
+```text
+Điều kiện cảnh báo
+        │
+        ▼
+ STM32F103C8T6
+        │
+        ▼
+ RELAY_CTRL
+        │
+        ▼
+   Relay 5V
+        │
+        ▼
+   Đèn / tải 220V
+```
 
-> **NOTE**: The Software UART operates at 9600 baud using 8N1 format. CRC16 (Modbus) is used to verify data integrity between the ESP32-S3 and the PC.
+Phần MCU chỉ xử lý tín hiệu điều khiển điện áp thấp; tải 220V phải được bố trí và cách ly phù hợp với thiết kế phần cứng.
 
+### 6. Truyền dữ liệu UART lên PC
 
-## Getting Started
+STM32 truyền dữ liệu giám sát tới ứng dụng WinForms thông qua UART.
 
-### Software Prerequisites
+Một khung dữ liệu có thể chứa các trường chính như:
 
-| Software                 | Version | Purpose                                          |
-| ------------------------ | ------- | ------------------------------------------------ |
-| Arduino IDE / PlatformIO | Latest  | ESP32-S3 development and firmware flashing       |
-| ESP32 Arduino Core       | Latest  | ESP32-S3 hardware and peripheral support         |
-| C# / .NET WinForms       | .NET 6+ | PC-side monitoring and communication application |
-| Serial Terminal          | Any     | Serial communication testing and debugging       |
+```text
+Temperature,Humidity,GasStatus,AlarmStatus
+```
 
-### Hardware Setup
+Ví dụ dữ liệu:
 
-Before running the firmware, connect the components according to the **Pin Configuration** section:
+```text
+28.5,65.2,0,0
+```
 
-* Connect the US-100 to GPIO17 (RX) and GPIO18 (TX) using the ESP32-S3 Hardware UART.
-* Connect the USB-to-UART converter to GPIO43 (TX) and GPIO44 (RX) for Software UART communication with the PC.
-* Make sure the ESP32-S3, US-100, and USB-to-UART converter share a common **GND**.
-* Ensure the USB-to-UART converter uses a voltage level compatible with the ESP32-S3.
+Trong đó:
 
-### Installation
+* `Temperature` — nhiệt độ hiện tại.
+* `Humidity` — độ ẩm hiện tại.
+* `GasStatus` — trạng thái phát hiện gas.
+* `AlarmStatus` — trạng thái cảnh báo tổng.
 
-1. Clone the repository:
+> Định dạng thực tế cần đối chiếu với firmware hiện tại và chương trình WinForms của project.
+
+---
+
+## Ứng dụng WinForms trên PC
+
+Ứng dụng **C# WinForms** được tự xây dựng để làm giao diện giám sát phía PC.
+
+Các chức năng chính:
+
+* Kết nối tới cổng COM của STM32 thông qua USB–UART.
+* Nhận dữ liệu UART theo thời gian thực.
+* Hiển thị **nhiệt độ**.
+* Hiển thị **độ ẩm**.
+* Hiển thị trạng thái **rò rỉ khí gas**.
+* Hiển thị trạng thái **cảnh báo**.
+* Cảnh báo khi nhiệt độ vượt ngưỡng.
+* Cảnh báo khi hệ thống phát hiện rò rỉ khí gas.
+
+Kiến trúc giao tiếp tổng quát:
+
+```text
+┌─────────────────────────┐
+│      STM32F103C8T6      │
+│                         │
+│ AHT20 ── I2C ──┐        │
+│ MQ-2 ── GPIO ──┤        │
+│                │        │
+│ LCD ── I2C ────┤        │
+│ Relay ─ GPIO ──┤        │
+│                │        │
+│        UART ───┴────────┼────────┐
+└─────────────────────────┘        │
+                                   ▼
+                        ┌──────────────────────┐
+                        │      USB–UART        │
+                        └──────────┬───────────┘
+                                   │
+                                   ▼
+                        ┌──────────────────────┐
+                        │    C# WinForms       │
+                        │                      │
+                        │ - Nhiệt độ           │
+                        │ - Độ ẩm              │
+                        │ - Rò rỉ khí gas      │
+                        │ - Cảnh báo            │
+                        └──────────────────────┘
+```
+
+---
+
+## Kiến trúc hệ thống tổng quan
+
+```text
+                           ┌──────────────────────┐
+                           │      PC / Laptop     │
+                           │     C# WinForms      │
+                           └──────────┬───────────┘
+                                      │
+                                      │ UART
+                                      ▼
+┌─────────────────────────────────────────────────────────┐
+│                   STM32F103C8T6                         │
+│                                                         │
+│  ┌─────────────┐       ┌────────────────────────────┐  │
+│  │    AHT20    │◄──I2C─┤ Đọc nhiệt độ + độ ẩm      │  │
+│  └─────────────┘       └──────────────┬─────────────┘  │
+│                                       │                │
+│  ┌─────────────┐                      ▼                │
+│  │    MQ-2     │──GPIO──►     Xử lý ngưỡng cảnh báo   │
+│  └─────────────┘                      │                │
+│                                       ├────► LCD 16x2 │
+│  ┌─────────────┐                      │       (I2C)   │
+│  │ Mạch chuyển │◄──── 5V ↔ 3.3V ────┤                │
+│  │ mức logic   │                      ├────► Relay 5V │
+│  └─────────────┘                      │                │
+│                                       └────► UART ─────┼──► PC
+└─────────────────────────────────────────────────────────┘
+                                                  │
+                                                  ▼
+                                         ┌────────────────┐
+                                         │  Đèn / tải     │
+                                         │      220V      │
+                                         └────────────────┘
+```
+
+### Quy trình hoạt động
+
+1. **Khởi tạo:** STM32F103C8T6 khởi tạo GPIO, I2C, UART và các ngoại vi cần thiết.
+2. **Đọc cảm biến:** STM32 đọc nhiệt độ và độ ẩm từ AHT20 qua I2C, đồng thời đọc trạng thái MQ-2.
+3. **Xử lý dữ liệu:** firmware cập nhật các biến đo lường và kiểm tra các điều kiện cảnh báo.
+4. **Hiển thị tại thiết bị:** LCD 16x2 hiển thị nhiệt độ, độ ẩm hoặc thông báo cảnh báo.
+5. **Điều khiển cảnh báo:** khi điều kiện cảnh báo xảy ra, STM32 điều khiển relay 5V để kích hoạt đèn/tải 220V theo cấu hình.
+6. **Truyền dữ liệu:** STM32 gửi dữ liệu giám sát lên PC thông qua UART.
+7. **Giám sát trên PC:** ứng dụng WinForms nhận dữ liệu, cập nhật giao diện và đưa ra cảnh báo khi vượt giới hạn.
+
+---
+
+## Bắt đầu
+
+### Yêu cầu phần mềm
+
+| Phần mềm | Phiên bản | Mục đích |
+| -------------------------------- | --------- | ----------------------------------------------- |
+| STM32CubeMX | Theo phiên bản project | Cấu hình MCU, GPIO, I2C, UART và sinh mã khởi tạo |
+| PlatformIO | Mới nhất | Quản lý project, biên dịch và nạp firmware |
+| VS Code | Khuyến nghị | Môi trường phát triển cho PlatformIO |
+| STM32Cube HAL | Theo project | Thư viện HAL sử dụng trong firmware |
+| C# / .NET WinForms | Theo project | Phát triển ứng dụng giám sát trên PC |
+| ST-LINK Utility / STM32CubeProgrammer | Theo môi trường sử dụng | Nạp và kiểm tra firmware |
+| Serial Terminal | Bất kỳ | Kiểm thử UART và debug |
+
+### Lắp phần cứng
+
+* Kết nối **AHT20** với bus I2C của STM32.
+* Kết nối **LCD 16x2 I2C** qua mạch chuyển mức logic nếu module hoạt động ở 5V.
+* Kết nối **MQ-2** theo thiết kế; nếu tín hiệu đưa vào MCU là tín hiệu 5V thì phải chuyển mức/giảm áp về mức phù hợp với STM32.
+* Kết nối **Relay 5V** với chân điều khiển của MCU thông qua mạch driver phù hợp với tải của relay.
+* Kết nối tải/đèn **220V** vào tiếp điểm relay theo đúng thiết kế điện và yêu cầu an toàn.
+* Kết nối **UART của STM32** với USB–UART Converter để giao tiếp với PC.
+* Nối chung GND ở phía mạch logic theo thiết kế.
+
+### Cài đặt
+
+1. Sao chép repository:
 
 ```bash
 git clone <repository-url>
-cd ESP32S3_Distance_SoftUART
+cd <repository-folder>
 ```
 
-2. Open the project in **Arduino IDE or PlatformIO**.
+2. Mở thư mục project bằng **Visual Studio Code + PlatformIO**.
 
-3. Select the appropriate **ESP32-S3 board** and configure the correct USB/serial port.
+3. Kiểm tra cấu hình trong `platformio.ini` và bảo đảm board STM32F103C8T6 đúng với project.
 
-4. Connect the US-100 and USB-to-UART converter according to the pin configuration.
+4. Đối chiếu cấu hình GPIO/I2C/UART với file cấu hình **STM32CubeMX** và schematic.
 
-5. Build and upload the firmware to the ESP32-S3.
+5. Biên dịch firmware:
 
-6. Open the C# WinForms application and select the corresponding serial port.
+```bash
+pio run
+```
 
-7. Start the system. The ESP32-S3 will periodically measure distance from the US-100 and transmit the result using the `@DATA:CRC&` frame format.
+6. Nạp firmware bằng ST-LINK hoặc phương thức upload được cấu hình trong `platformio.ini`:
 
-### Communication Test
+```bash
+pio run -t upload
+```
 
-You can use a serial terminal or the WinForms application to verify communication. Send a valid frame to the ESP32-S3 and check whether the CRC is correctly validated and the expected response is returned.
+7. Kết nối USB–UART với PC và xác định đúng cổng COM.
 
+8. Mở ứng dụng WinForms.
 
-## Resources
+9. Khởi động hệ thống và kiểm tra dữ liệu nhiệt độ, độ ẩm, trạng thái MQ-2 và cảnh báo.
 
-* [ESP32-S3 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf)
-* [ESP32-S3 Technical Reference Manual](https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf)
-* [Arduino-ESP32 Documentation](https://docs.espressif.com/projects/arduino-esp32/en/latest/)
-* [US-100 Ultrasonic Sensor Datasheet](https://www.mouser.com/datasheet/2/813/US-100-DS-1218130.pdf)
-* [Microsoft .NET Documentation](https://learn.microsoft.com/en-us/dotnet/)
-* [Windows Forms Documentation](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/)
-* [Modbus CRC16](https://www.modbustools.com/modbus_crc16.htm)
+### Kiểm thử hệ thống
 
+Các nội dung cần kiểm tra:
 
-## Project Status
+* STM32F103C8T6 khởi động bình thường.
+* AHT20 trả về dữ liệu nhiệt độ và độ ẩm hợp lệ.
+* LCD 16x2 hiển thị đúng nội dung.
+* Mạch chuyển mức 5V ↔ 3.3V hoạt động ổn định trên các đường tín hiệu cần thiết.
+* MQ-2 thay đổi trạng thái khi xuất hiện điều kiện phát hiện khí theo cấu hình module.
+* Relay 5V đóng/cắt đúng theo tín hiệu điều khiển.
+* Đèn/tải 220V hoạt động đúng theo relay.
+* UART truyền dữ liệu ổn định lên PC.
+* WinForms nhận và hiển thị dữ liệu đúng.
+* Cảnh báo xuất hiện khi nhiệt độ vượt ngưỡng đã cấu hình.
+* Cảnh báo xuất hiện khi MQ-2 báo trạng thái gas.
 
-* **Status**: Complete
-* **Version**: v1.0
-* **Last Updated**: September 2026
+---
 
-## Contact
+## Cấu trúc project đề xuất
 
-**Gia Bao**
-📧 Email: *[your-email@example.com](mailto:your-email@example.com)*
+```text
+.
+├── firmware/
+│   ├── include/
+│   ├── lib/
+│   ├── src/
+│   ├── test/
+│   └── platformio.ini
+│
+├── cube_mx/
+│   └── *.ioc
+│
+├── pc_app/
+│   └── WinForms project
+│
+├── demo/
+│   ├── Schematic.svg
+│   ├── PCB.svg
+│   └── ...
+│
+└── README.md
+```
+
+> Cấu trúc trên mang tính mô tả; tên thư mục thực tế cần giữ đúng theo repository hiện tại của dự án.
+
+---
+
+## Tài liệu tham khảo
+
+* [Datasheet STM32F103C8](https://www.st.com/resource/en/datasheet/stm32f103c8.pdf)
+* [STM32CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)
+* [PlatformIO Documentation](https://docs.platformio.org/)
+* [AHT20 Datasheet](https://www.aosong.com/userfiles/files/media/AHT20%20datasheet%20Version-1.0.pdf)
+* [Microsoft .NET](https://learn.microsoft.com/en-us/dotnet/)
+* [Windows Forms](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/)
+
+---
+
+## Trạng thái dự án
+
+* **Trạng thái:** Hoàn thành
+* **Phiên bản:** v1.0
+* **Cập nhật lần cuối:** Tháng 9/2026
+
+---
+
+## Liên hệ
+
+**Gia Bảo**
+
+📧 Email: *[your-email@example.com](mailto:your-email@example.com)*  
 🐙 GitHub: *your-github-profile*
-
