@@ -19,12 +19,12 @@ Hệ thống sử dụng:
 * **AHT20** giao tiếp **I2C** để đo nhiệt độ và độ ẩm.
 * **MQ-2** để phát hiện khí gas/khói và đưa tín hiệu cảnh báo về STM32.
 * **LCD 16x2 giao tiếp I2C** để hiển thị nhiệt độ, độ ẩm và trạng thái cảnh báo.
-* **Mạch chuyển mức logic 5V ↔ 3.3V** để bảo đảm tương thích mức điện áp giữa các thiết bị ngoại vi 5V và STM32F103C8T6.
+* **Mạch chuyển mức logic 5V ↔ 3.3V** để bảo đảm tương thích mức điện áp giữa các thiết bị ngoại vi và STM32F103C8T6, đặc biệt trên các tín hiệu giao tiếp với LCD I2C và MQ-2.
 * **Relay 5V** để điều khiển đèn cảnh báo **220V**.
 * **UART** để truyền dữ liệu đo được từ STM32 lên PC.
 * **Ứng dụng C# WinForms tự xây dựng** trên PC để hiển thị nhiệt độ, độ ẩm, trạng thái rò rỉ khí gas và đưa ra cảnh báo khi giá trị vượt ngưỡng cài đặt.
 
-Mục tiêu của dự án là xây dựng một hệ thống giám sát thực tế, đồng thời thực hành các kỹ năng **STM32, I2C, ADC/GPIO, UART, điều khiển relay, xử lý ngưỡng cảnh báo và giao tiếp giữa MCU với phần mềm PC**.
+Mục tiêu của dự án là xây dựng một hệ thống giám sát thực tế, đồng thời thực hành các kỹ năng **STM32, I2C, GPIO, UART, điều khiển relay, xử lý ngưỡng cảnh báo và giao tiếp giữa MCU với phần mềm PC**.
 
 ---
 
@@ -44,8 +44,8 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 * **AHT20**: cảm biến nhiệt độ và độ ẩm, giao tiếp với STM32 thông qua I2C.
 * **LCD 16x2 + module I2C**: hiển thị thông tin đo được và trạng thái cảnh báo.
 * **MQ-2**: cảm biến dùng để phát hiện khí gas/khói; tín hiệu từ module được đưa qua mạch chuyển mức phù hợp trước khi vào MCU.
-* **Mạch chuyển mức 5V ↔ 3.3V**: chuyển đổi mức logic giữa các thiết bị ngoại vi và STM32F103C8T6, đặc biệt trên tuyến giao tiếp I2C và tín hiệu từ module MQ-2 và LCD 16x2 giao tiếp I2C.
-* **Relay 5V**: nhận tín hiệu điều khiển từ mạch MCU để đóng cắt loa cảnh báo 220V.
+* **Mạch chuyển mức 5V ↔ 3.3V**: bảo đảm tương thích mức logic giữa STM32F103C8T6 và các ngoại vi sử dụng mức điện áp khác nhau, đặc biệt trên tuyến I2C của LCD và tín hiệu từ module MQ-2.
+* **Relay 5V**: nhận tín hiệu điều khiển từ MCU để đóng/cắt đèn cảnh báo 220V.
 * **USB–UART / UART**: cầu nối truyền dữ liệu giữa STM32 và PC.
 
 
@@ -56,7 +56,7 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 | STM32F103C8T6 | 1 | MCU trung tâm, xử lý dữ liệu và điều khiển hệ thống |
 | AHT20 | 1 | Đo nhiệt độ và độ ẩm qua I2C |
 | LCD 16x2 + module I2C | 1 | Hiển thị nhiệt độ, độ ẩm và cảnh báo |
-| MQ-2 | 1 | Phát hiện khí gas/khói |
+| MQ-2 | 1 | Phát hiện khí gas/khói bằng ngõ ra số DO |
 | Mạch chuyển mức 5V ↔ 3.3V | 1 | Tương thích mức logic giữa ngoại vi và STM32 |
 | Relay 5V | 1 | Đóng/cắt tải cảnh báo |
 | Đèn/tải 220V | 1 | Cảnh báo bằng tín hiệu đèn |
@@ -73,8 +73,8 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 | STM32 | Chức năng | AHT20 | Ghi chú |
 | -------------------------------- | ------- | ----- | ------------------------------------------------ |
-| GPIO PB10 | I2C Clock | SCL | Đường xung clock |
-| GPIO PB11 | I2C Data | SDA | Đường dữ liệu |
+| **GPIO PB10** | I2C2 SCL | SCL | Đường xung clock của AHT20 |
+| **GPIO PB11** | I2C2 SDA | SDA | Đường dữ liệu của AHT20 |
 | 3.3V | Nguồn | VCC | Cấp nguồn theo thiết kế |
 | GND | Mass | GND | **Bắt buộc nối chung** |
 
@@ -82,8 +82,8 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 | STM32 / Bus | Chức năng | LCD I2C | Ghi chú |
 | ---------------- | --------- | ------- | ------------------------------------------ |
-| GPIO PB6 | Data | SDA | Đi qua mạch chuyển mức vì LCD chạy ở điện áp 5V |
-| GPIO PB7 | Clock | SCL | Đi qua mạch chuyển mức vì LCD chạy ở điện áp 5V |
+| **GPIO PB6** | I2C1 SDA | SDA | Đường dữ liệu LCD, đi qua mạch chuyển mức |
+| **GPIO PB7** | I2C1 SCL | SCL | Đường clock LCD, đi qua mạch chuyển mức |
 | GND | Mass | GND | **Bắt buộc nối chung ở phía logic** |
 | 5V | Nguồn LCD | VCC | Theo thiết kế phần cứng của module LCD |
 
@@ -91,17 +91,17 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 | Tín hiệu | Chức năng | Kết nối MCU | Ghi chú |
 | -------- | --------- | ----------- | ---------------------------------------------- |
-| DO | Digital Output | GPIO PA3 | Dùng để xác định trạng thái cảnh báo gas, cần nối qua module chuyển mức đế ra tín hiệ 3.3V |
+| **DO** | Digital Output | **GPIO PA3** | Firmware đọc trạng thái số để xác định cảnh báo gas; tín hiệu phải phù hợp mức 3.3V trước khi vào MCU |
 | VCC | Nguồn | 5V | Theo module MQ-2 |
 | GND | Mass | GND | Nối chung với hệ thống |
 
-> Vì MQ-2 module thường hoạt động ở mức 5V, cần bảo đảm tín hiệu đưa vào GPIO/ADC của STM32 không vượt quá mức điện áp cho phép (3.3V). Ở đây sử dụng mạch chuyển mức/giảm áp để chueyern tín hiệu 5V thành tín hiệu 3.3V đưa vào GPIO/ADC của STM32
+> MQ-2 trong project này được sử dụng qua **ngõ ra số DO**, không dùng ADC để tính nồng độ. Vì module MQ-2 có thể sử dụng nguồn 5V, tín hiệu DO cần được đưa qua mạch chuyển mức/giảm áp để bảo đảm mức logic phù hợp với GPIO 3.3V của STM32.
 
 ### Relay 5V – STM32F103C8T6
 
 | Tín hiệu | Chức năng | MCU | Ghi chú |
 | -------- | --------- | --- | -------------------------------------------- |
-| RELAY_CTRL | Điều khiển relay | GPIO PA4 | Điều khiển relay đóng ngắt đèn báo |
+| **RELAY_CTRL** | Điều khiển relay | **GPIO PA4** | Firmware đặt mức HIGH khi có cảnh báo |
 | VCC | Nguồn relay | 5V | Cấp nguồn theo module relay |
 | GND | Mass | GND | Nối chung phía điều khiển |
 
@@ -127,57 +127,57 @@ Mỗi chu kỳ hoạt động, firmware thực hiện việc đọc dữ liệu 
 
 AHT20 giao tiếp với STM32F103C8T6 thông qua **I2C**.
 
-Firmware thực hiện:
-
-1. Gửi lệnh đo tới AHT20.
-2. Chờ cảm biến hoàn thành phép đo.
-3. Đọc dữ liệu nhiệt độ và độ ẩm qua I2C.
-4. Chuyển đổi dữ liệu sang giá trị nhiệt độ/độ ẩm để hiển thị và xử lý.
+Firmware khởi tạo AHT20 bằng `AHT20_Init()`, sau đó gọi `AHT20_Read(&temperature, &humidity)` để lấy nhiệt độ và độ ẩm. Hai giá trị này được dùng cho hiển thị LCD, xử lý cảnh báo và truyền UART.
 
 Các giá trị này được sử dụng đồng thời cho **LCD tại thiết bị** và **ứng dụng WinForms trên PC**.
 
 ### 2. Phát hiện rò rỉ khí gas bằng MQ-2
 
-MQ-2 được sử dụng làm tín hiệu phát hiện khí gas/khói. Trong cấu hình sử dụng ngõ ra số, firmware đọc trạng thái **DO** thông qua GPIO.
+MQ-2 được sử dụng ở **ngõ ra số DO** và firmware đọc trạng thái tại **GPIO PA3** bằng `HAL_GPIO_ReadPin()`. Project hiện tại dùng trạng thái số để cảnh báo, không tính nồng độ ppm bằng ADC.
 
-Khi tín hiệu gas đạt trạng thái cảnh báo:
+Khi `PA3 == GPIO_PIN_SET`, firmware xử lý đây là trạng thái cảnh báo gas:
 
-* LCD hiển thị thông báo **rò rỉ khí gas**.
-* Hệ thống kích hoạt **đèn/tải 220V thông qua relay 5V**.
-* Trạng thái gas được truyền lên PC.
-* Ứng dụng WinForms hiển thị cảnh báo tương ứng.
+* LCD hiển thị **`CANH BAO` / `RO RI KHI GA`**.
+* GPIO **PA4** được đặt mức HIGH để kích **relay 5V** và đèn cảnh báo 220V.
+* Trạng thái gas được truyền lên PC dưới trường `G` trong khung UART.
+* Ứng dụng WinForms hiển thị trạng thái và cảnh báo tương ứng.
 
-> Ngưỡng phát hiện thực tế của MQ-2 phụ thuộc module, mạch, thời gian làm nóng và cách hiệu chỉnh cảm biến. Vì vậy trạng thái DO trong project nên được xem là **tín hiệu cảnh báo theo cấu hình phần cứng**, không phải một giá trị nồng độ ppm tuyệt đối nếu chưa có quy trình hiệu chuẩn.
+> Ngưỡng phát hiện thực tế của MQ-2 phụ thuộc module, mạch, thời gian làm nóng và cách hiệu chỉnh cảm biến. Vì vậy trạng thái **DO** trong project được xem là **tín hiệu cảnh báo theo cấu hình phần cứng**, không phải giá trị nồng độ ppm tuyệt đối.
 
 ### 3. Cảnh báo nhiệt độ vượt ngưỡng
 
-Firmware có thể kiểm tra nhiệt độ đo được với giới hạn cài đặt trong chương trình.
+Trong firmware hiện tại, hệ thống sử dụng hai ngưỡng môi trường:
+
+* **Nhiệt độ > 35.0°C** → cảnh báo nhiệt độ cao.
+* **Độ ẩm > 95.0%RH** → cảnh báo độ ẩm cao.
+
+Khi một trong các điều kiện trên xảy ra, relay được kích hoạt và LCD chuyển sang màn hình cảnh báo tương ứng.
 
 Ví dụ:
 
 ```text
-Nhiệt độ > giới hạn
-        │
-        ▼
-   Kích hoạt cảnh báo
-        │
-   ┌────┴─────────────┐
-   ▼                  ▼
-LCD cảnh báo      Relay / đèn
+Nhiệt độ / Độ ẩm vượt ngưỡng
+              │
+              ▼
+       Kích hoạt cảnh báo
+              │
+        ┌─────┴─────┐
+        ▼           ▼
+   LCD cảnh báo   Relay / đèn
 ```
 
-Ngưỡng nhiệt độ nên được định nghĩa bằng hằng số/biến cấu hình để dễ thay đổi mà không phải sửa nhiều vị trí trong mã nguồn.
+Firmware kiểm tra các điều kiện theo thứ tự **gas → nhiệt độ → độ ẩm**. Do đó, khi đồng thời có nhiều điều kiện cảnh báo, thông báo gas được ưu tiên hiển thị trước.
 
 ### 4. Hiển thị LCD 16x2
 
 LCD được sử dụng để cung cấp thông tin trực tiếp tại thiết bị, giúp hệ thống có thể hoạt động mà không cần theo dõi PC liên tục.
 
-Nội dung hiển thị được tổ chức theo các trạng thái:
+Nội dung hiển thị được tổ chức theo các trạng thái. Khi hệ thống bình thường, firmware hiển thị:
 
 ```text
 +----------------+
-| T: 28.5 C      |
-| H: 65.2 %      |
+| NHIET: 28.50 C |
+| DO AM: 65.20 % |
 +----------------+
 ```
 
@@ -186,13 +186,13 @@ Khi có sự cố, LCD chuyển sang thông báo cảnh báo:
 ```text
 +----------------+
 | CANH BAO      |
-| RO RI KHI GAS |
+| RO RI KHI GA  |
 +----------------+
 ```
 
 ### 5. Điều khiển relay và đèn cảnh báo 220V
 
-STM32 xuất tín hiệu điều khiển tới relay 5V. Relay đóng/cắt đèn cảnh báo ở phía điện áp cao.
+STM32 xuất tín hiệu điều khiển tại **GPIO PA4** tới relay 5V. Trong firmware, PA4 được đặt **HIGH** khi có cảnh báo và **LOW** khi hệ thống bình thường.
 
 Luồng điều khiển:
 
@@ -203,7 +203,7 @@ Luồng điều khiển:
  STM32F103C8T6
         │
         ▼
- RELAY_CTRL(GPIO PB4)
+ RELAY_CTRL(GPIO PA4)
         │
         ▼
    Relay 5V
@@ -218,26 +218,25 @@ Phần MCU chỉ xử lý tín hiệu điều khiển điện áp thấp; tải 
 
 STM32 truyền dữ liệu giám sát tới ứng dụng WinForms thông qua UART.
 
-Một khung dữ liệu có thể chứa các trường chính như:
+Firmware hiện tại tạo khung dữ liệu UART theo định dạng:
 
 ```text
-Temperature,Humidity,GasStatus,AlarmStatus
+@ T=%.2f H=%.2f G=%d &
 ```
 
-Ví dụ dữ liệu:
+Ví dụ:
 
 ```text
-28.5,65.2,0,0
+@ T=28.50 H=65.20 G=0 &
 ```
 
 Trong đó:
 
-* `Temperature` — nhiệt độ hiện tại.
-* `Humidity` — độ ẩm hiện tại.
-* `GasStatus` — trạng thái phát hiện gas.
-* `AlarmStatus` — trạng thái cảnh báo tổng.
+* `T` — nhiệt độ hiện tại.
+* `H` — độ ẩm hiện tại.
+* `G` — trạng thái gas đọc từ GPIO PA3 (`0` hoặc `1`).
 
-> Định dạng thực tế cần đối chiếu với firmware hiện tại và chương trình WinForms của project.
+Khung dữ liệu được gửi sau mỗi chu kỳ **1 giây**.
 
 ---
 
@@ -249,12 +248,12 @@ Các chức năng chính:
 
 * Kết nối tới cổng COM của STM32 thông qua USB–UART.
 * Nhận dữ liệu UART theo thời gian thực.
-* Hiển thị **nhiệt độ**.
-* Hiển thị **độ ẩm**.
+* Hiển thị **nhiệt độ** và **độ ẩm**.
 * Hiển thị trạng thái **rò rỉ khí gas**.
 * Hiển thị trạng thái **cảnh báo**.
-* Cảnh báo khi nhiệt độ vượt ngưỡng.
-* Cảnh báo khi hệ thống phát hiện rò rỉ khí gas.
+* Cảnh báo khi nhiệt độ vượt **35°C**.
+* Cảnh báo khi độ ẩm vượt **95%RH**.
+* Cảnh báo khi MQ-2 báo trạng thái gas.
 
 Kiến trúc giao tiếp tổng quát:
 
@@ -262,10 +261,10 @@ Kiến trúc giao tiếp tổng quát:
 ┌─────────────────────────┐
 │      STM32F103C8T6      │
 │                         │
-│ AHT20 ── I2C ──┐        │
+│ AHT20 ── I2C2 ─┐        │
 │ MQ-2 ── GPIO ──┤        │
 │                │        │
-│ LCD ── I2C ────┤        │
+│ LCD ── I2C1 ───┤        │
 │ Relay ─ GPIO ──┤        │
 │                │        │
 │        UART ───┴────────┼────────┐
@@ -325,13 +324,13 @@ Kiến trúc giao tiếp tổng quát:
 
 ### Quy trình hoạt động
 
-1. **Khởi tạo:** STM32F103C8T6 khởi tạo GPIO, I2C, UART và các ngoại vi cần thiết.
-2. **Đọc cảm biến:** STM32 đọc nhiệt độ và độ ẩm từ AHT20 qua I2C, đồng thời đọc trạng thái MQ-2.
-3. **Xử lý dữ liệu:** firmware cập nhật các biến đo lường và kiểm tra các điều kiện cảnh báo.
-4. **Hiển thị tại thiết bị:** LCD 16x2 hiển thị nhiệt độ, độ ẩm hoặc thông báo cảnh báo.
-5. **Điều khiển cảnh báo:** khi điều kiện cảnh báo xảy ra, STM32 điều khiển relay 5V để kích hoạt đèn/tải 220V theo cấu hình.
-6. **Truyền dữ liệu:** STM32 gửi dữ liệu giám sát lên PC thông qua UART.
-7. **Giám sát trên PC:** ứng dụng WinForms nhận dữ liệu, cập nhật giao diện và đưa ra cảnh báo khi vượt giới hạn.
+1. **Khởi tạo:** STM32F103C8T6 khởi tạo GPIO, I2C1, I2C2 và USART1; sau đó gọi `AHT20_Init()` và `LCD_I2C_Init()`.
+2. **Đọc cảm biến:** STM32 đọc nhiệt độ/độ ẩm từ AHT20 và đọc trạng thái số của MQ-2 tại **PA3**.
+3. **Xử lý cảnh báo:** firmware kiểm tra theo thứ tự **gas → nhiệt độ > 35°C → độ ẩm > 95%RH**.
+4. **Hiển thị tại thiết bị:** LCD 16x2 hiển thị thông báo cảnh báo hoặc nhiệt độ, độ ẩm khi hệ thống bình thường.
+5. **Điều khiển cảnh báo:** GPIO **PA4** được đặt HIGH khi có cảnh báo để kích relay 5V; khi bình thường PA4 được đặt LOW.
+6. **Truyền dữ liệu:** USART1 gửi khung `@ T=... H=... G=... &` lên PC.
+7. **Chu kỳ:** sau mỗi vòng xử lý, firmware chờ `HAL_Delay(1000)` trước lần đọc tiếp theo.
 
 ---
 
@@ -341,7 +340,7 @@ Kiến trúc giao tiếp tổng quát:
 
 | Phần mềm | Phiên bản | Mục đích |
 | -------------------------------- | --------- | ----------------------------------------------- |
-| STM32CubeMX | Theo phiên bản project | Cấu hình MCU, GPIO, I2C, UART và sinh mã khởi tạo |
+| STM32CubeMX | Theo phiên bản project | Cấu hình MCU, GPIO, I2C1, I2C2, USART1 và sinh mã khởi tạo |
 | PlatformIO | Mới nhất | Quản lý project, biên dịch và nạp firmware |
 | VS Code | Khuyến nghị | Môi trường phát triển cho PlatformIO |
 | STM32Cube HAL | Theo project | Thư viện HAL sử dụng trong firmware |
@@ -405,8 +404,9 @@ Các nội dung cần kiểm tra:
 * Đèn/tải 220V hoạt động đúng theo relay.
 * UART truyền dữ liệu ổn định lên PC.
 * WinForms nhận và hiển thị dữ liệu đúng.
-* Cảnh báo xuất hiện khi nhiệt độ vượt ngưỡng đã cấu hình.
-* Cảnh báo xuất hiện khi MQ-2 báo trạng thái gas.
+* Cảnh báo xuất hiện khi **temperature > 35.0°C**.
+* Cảnh báo xuất hiện khi **humidity > 95.0%RH**.
+* Cảnh báo xuất hiện khi **MQ-2 DO = HIGH**.
 
 ---
 
