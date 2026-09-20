@@ -50,28 +50,6 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 > Hình ảnh schematic trong thư mục `demo` dùng để minh họa thiết kế phần cứng. Cấu hình chân thực tế cần đối chiếu với project STM32CubeMX/PlatformIO tương ứng.
 
----
-
-## Sơ đồ mạch in (PCB) minh họa
-
-![Sơ đồ PCB minh họa](demo/PCB.svg)
-
-PCB được thiết kế dựa trên sơ đồ nguyên lý nhằm thể hiện quá trình chuyển từ thiết kế mạch điện sang bố trí mạch in.
-
-Thiết kế có thể bao gồm:
-
-* Bố trí STM32F103C8T6 và các đầu nối ngoại vi.
-* Khu vực cảm biến AHT20 và module MQ-2.
-* Mạch LCD I2C và mạch chuyển mức logic 5V ↔ 3.3V.
-* Mạch điều khiển relay 5V.
-* Đầu nối UART/USB–UART với PC.
-* Routing các đường tín hiệu, nguồn và GND.
-* Phân tách và bố trí phần điều khiển điện áp thấp với phần tải 220V theo thiết kế thực tế.
-* Kiểm tra kết nối giữa Schematic và PCB.
-
-> Hình ảnh PCB trong thư mục `demo` dùng để minh họa thiết kế và bố trí mạch, không phải file Gerber sản xuất.
-
----
 
 ## Thành phần phần cứng
 
