@@ -20,7 +20,7 @@ Hệ thống sử dụng:
 * **MQ-2** để phát hiện khí gas/khói và đưa tín hiệu cảnh báo về STM32.
 * **LCD 16x2 giao tiếp I2C** để hiển thị nhiệt độ, độ ẩm và trạng thái cảnh báo.
 * **Mạch chuyển mức logic 5V ↔ 3.3V** để bảo đảm tương thích mức điện áp giữa các thiết bị ngoại vi 5V và STM32F103C8T6.
-* **Relay 5V** để điều khiển tải/đèn cảnh báo **220V**.
+* **Relay 5V** để điều khiển đèn cảnh báo **220V**.
 * **UART** để truyền dữ liệu đo được từ STM32 lên PC.
 * **Ứng dụng C# WinForms tự xây dựng** trên PC để hiển thị nhiệt độ, độ ẩm, trạng thái rò rỉ khí gas và đưa ra cảnh báo khi giá trị vượt ngưỡng cài đặt.
 
@@ -44,11 +44,9 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 * **AHT20**: cảm biến nhiệt độ và độ ẩm, giao tiếp với STM32 thông qua I2C.
 * **LCD 16x2 + module I2C**: hiển thị thông tin đo được và trạng thái cảnh báo.
 * **MQ-2**: cảm biến dùng để phát hiện khí gas/khói; tín hiệu từ module được đưa qua mạch chuyển mức phù hợp trước khi vào MCU.
-* **Mạch chuyển mức 5V ↔ 3.3V**: chuyển đổi mức logic giữa các thiết bị ngoại vi và STM32F103C8T6, đặc biệt trên tuyến giao tiếp I2C và tín hiệu từ module MQ-2 theo thiết kế thực tế.
-* **Relay 5V**: nhận tín hiệu điều khiển từ mạch driver/MCU để đóng cắt tải cảnh báo 220V.
+* **Mạch chuyển mức 5V ↔ 3.3V**: chuyển đổi mức logic giữa các thiết bị ngoại vi và STM32F103C8T6, đặc biệt trên tuyến giao tiếp I2C và tín hiệu từ module MQ-2 và LCD 16x2 giao tiếp I2C.
+* **Relay 5V**: nhận tín hiệu điều khiển từ mạch MCU để đóng cắt loa cảnh báo 220V.
 * **USB–UART / UART**: cầu nối truyền dữ liệu giữa STM32 và PC.
-
-> Hình ảnh schematic trong thư mục `demo` dùng để minh họa thiết kế phần cứng. Cấu hình chân thực tế cần đối chiếu với project STM32CubeMX/PlatformIO tương ứng.
 
 
 ## Thành phần phần cứng
@@ -75,8 +73,8 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 | STM32 | Chức năng | AHT20 | Ghi chú |
 | -------------------------------- | ------- | ----- | ------------------------------------------------ |
-| GPIO I2C_SCL | I2C Clock | SCL | Đường xung clock |
-| GPIO I2C_SDA | I2C Data | SDA | Đường dữ liệu |
+| GPIO PB10 | I2C Clock | SCL | Đường xung clock |
+| GPIO PB11 | I2C Data | SDA | Đường dữ liệu |
 | 3.3V | Nguồn | VCC | Cấp nguồn theo thiết kế |
 | GND | Mass | GND | **Bắt buộc nối chung** |
 
@@ -84,8 +82,8 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 | STM32 / Bus | Chức năng | LCD I2C | Ghi chú |
 | ---------------- | --------- | ------- | ------------------------------------------ |
-| I2C SDA | Data | SDA | Đi qua mạch chuyển mức nếu module LCD chạy 5V |
-| I2C SCL | Clock | SCL | Đi qua mạch chuyển mức nếu module LCD chạy 5V |
+| GPIO PB6 | Data | SDA | Đi qua mạch chuyển mức vì LCD chạy ở điện áp 5V |
+| GPIO PB7 | Clock | SCL | Đi qua mạch chuyển mức vì LCD chạy ở điện áp 5V |
 | GND | Mass | GND | **Bắt buộc nối chung ở phía logic** |
 | 5V | Nguồn LCD | VCC | Theo thiết kế phần cứng của module LCD |
 
@@ -93,24 +91,21 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 | Tín hiệu | Chức năng | Kết nối MCU | Ghi chú |
 | -------- | --------- | ----------- | ---------------------------------------------- |
-| DO | Digital Output | GPIO input | Dùng để xác định trạng thái cảnh báo gas |
-| AO* | Analog Output | ADC* | Chỉ sử dụng nếu project có đọc giá trị analog |
+| DO | Digital Output | GPIO PA3 | Dùng để xác định trạng thái cảnh báo gas, cần nối qua module chuyển mức đế ra tín hiệ 3.3V |
 | VCC | Nguồn | 5V | Theo module MQ-2 |
 | GND | Mass | GND | Nối chung với hệ thống |
 
-\* Tín hiệu **AO/ADC** chỉ áp dụng nếu phần cứng và firmware của project có triển khai đo analog. Với cấu hình giám sát rò rỉ đơn giản, hệ thống có thể sử dụng **DO** làm tín hiệu cảnh báo.
-
-> Vì MQ-2 module thường hoạt động ở mức 5V, cần bảo đảm tín hiệu đưa vào GPIO/ADC của STM32 không vượt quá mức điện áp cho phép. Mạch chuyển mức/giảm áp phải phù hợp với loại tín hiệu được sử dụng.
+> Vì MQ-2 module thường hoạt động ở mức 5V, cần bảo đảm tín hiệu đưa vào GPIO/ADC của STM32 không vượt quá mức điện áp cho phép (3.3V). Ở đây sử dụng mạch chuyển mức/giảm áp để chueyern tín hiệu 5V thành tín hiệu 3.3V đưa vào GPIO/ADC của STM32
 
 ### Relay 5V – STM32F103C8T6
 
 | Tín hiệu | Chức năng | MCU | Ghi chú |
 | -------- | --------- | --- | -------------------------------------------- |
-| RELAY_CTRL | Điều khiển relay | GPIO output | Điều khiển relay thông qua mạch driver nếu cần |
+| RELAY_CTRL | Điều khiển relay | GPIO PA4 | Điều khiển relay đóng ngắt đèn báo |
 | VCC | Nguồn relay | 5V | Cấp nguồn theo module relay |
 | GND | Mass | GND | Nối chung phía điều khiển |
 
-Relay được sử dụng để đóng/cắt tải cảnh báo **220V** như đèn báo.
+Relay được sử dụng để đóng/cắt đèn cảnh báo **220V**.
 
 > **Cảnh báo an toàn:** phần tải 220V phải được cách ly và đấu nối đúng kỹ thuật. Không thao tác phần điện lưới khi đang cấp điện; ưu tiên sử dụng hộp bảo vệ, cầu chì/bảo vệ quá dòng và khoảng cách cách điện phù hợp.
 
@@ -118,8 +113,8 @@ Relay được sử dụng để đóng/cắt tải cảnh báo **220V** như đ
 
 | STM32 | Chức năng | USB–UART Converter | Mục đích |
 | -------- | ------- | ------------------ | -------------------------------- |
-| UART_TX | Transmit | RX | STM32 gửi dữ liệu lên PC |
-| UART_RX | Receive | TX | STM32 nhận dữ liệu từ PC nếu cần |
+| GPIO PA9 | Transmit | RX | STM32 gửi dữ liệu lên PC |
+| GPIO PA10 | Receive | TX | STM32 nhận dữ liệu từ PC nếu cần |
 | GND | Mass | GND | **Bắt buộc nối chung** |
 
 ---
@@ -175,9 +170,9 @@ Ngưỡng nhiệt độ nên được định nghĩa bằng hằng số/biến c
 
 ### 4. Hiển thị LCD 16x2
 
-LCD được sử dụng để cung cấp thông tin trực tiếp tại thiết bị, giúp hệ thống có thể hoạt động mà không cần PC liên tục.
+LCD được sử dụng để cung cấp thông tin trực tiếp tại thiết bị, giúp hệ thống có thể hoạt động mà không cần theo dõi PC liên tục.
 
-Nội dung hiển thị có thể được tổ chức theo các trạng thái:
+Nội dung hiển thị được tổ chức theo các trạng thái:
 
 ```text
 +----------------+
@@ -186,7 +181,7 @@ Nội dung hiển thị có thể được tổ chức theo các trạng thái:
 +----------------+
 ```
 
-Khi có sự cố, LCD chuyển sang thông báo cảnh báo, ví dụ:
+Khi có sự cố, LCD chuyển sang thông báo cảnh báo:
 
 ```text
 +----------------+
@@ -197,7 +192,7 @@ Khi có sự cố, LCD chuyển sang thông báo cảnh báo, ví dụ:
 
 ### 5. Điều khiển relay và đèn cảnh báo 220V
 
-STM32 xuất tín hiệu điều khiển tới relay 5V. Relay đóng/cắt tải cảnh báo ở phía điện áp cao.
+STM32 xuất tín hiệu điều khiển tới relay 5V. Relay đóng/cắt đèn cảnh báo ở phía điện áp cao.
 
 Luồng điều khiển:
 
@@ -208,7 +203,7 @@ Luồng điều khiển:
  STM32F103C8T6
         │
         ▼
- RELAY_CTRL
+ RELAY_CTRL(GPIO PB4)
         │
         ▼
    Relay 5V
