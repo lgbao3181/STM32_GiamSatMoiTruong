@@ -86,8 +86,8 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 | STM32 / Bus | Chức năng | LCD I2C | Ghi chú |
 | ---------------- | --------- | ------- | ------------------------------------------ |
-| **GPIO PB6** | I2C1 SDA | SDA | Đường dữ liệu LCD, đi qua mạch chuyển mức |
-| **GPIO PB7** | I2C1 SCL | SCL | Đường clock LCD, đi qua mạch chuyển mức |
+| **GPIO PB6** | I2C1 SCL | SCL | Đường clock LCD, đi qua mạch chuyển mức |
+| **GPIO PB7** | I2C1 SDA | SDA | Đường dữ liệu LCD, đi qua mạch chuyển mức |
 | GND | Mass | GND | **Bắt buộc nối chung ở phía logic** |
 | 5V | Nguồn LCD | VCC | Theo thiết kế phần cứng của module LCD |
 
