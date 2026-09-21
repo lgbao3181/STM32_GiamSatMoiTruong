@@ -113,7 +113,7 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 Relay được sử dụng để đóng/cắt đèn cảnh báo **220V**.
 
-> **Cảnh báo an toàn:** phần tải 220V phải được cách ly và đấu nối đúng kỹ thuật. Không thao tác phần điện lưới khi đang cấp điện; ưu tiên sử dụng hộp bảo vệ, cầu chì/bảo vệ quá dòng và khoảng cách cách điện phù hợp.
+> **Cảnh báo an toàn:** phần đèn cảnh báo 220V phải được cách ly và đấu nối đúng kỹ thuật. Không thao tác phần điện lưới khi đang cấp điện; ưu tiên sử dụng hộp bảo vệ, cầu chì/bảo vệ quá dòng và khoảng cách cách điện phù hợp.
 
 ### UART – STM32 ↔ PC
 
@@ -141,7 +141,7 @@ Các giá trị này được sử dụng đồng thời cho **LCD tại thiết
 
 MQ-2 được sử dụng ở **ngõ ra số DO** và firmware đọc trạng thái tại **GPIO PA3** bằng `HAL_GPIO_ReadPin()`. Project hiện tại dùng trạng thái số để cảnh báo, không tính nồng độ ppm bằng ADC.
 
-Khi `PA3 == GPIO_PIN_SET`, firmware xử lý đây là trạng thái cảnh báo gas:
+Khi `PA3 == GPIO_PIN_RESET`, firmware xử lý đây là trạng thái cảnh báo gas:
 
 * LCD hiển thị **`CANH BAO` / `RO RI KHI GA`**.
 * GPIO **PA4** được đặt mức HIGH để kích **relay 5V** và đèn cảnh báo 220V.
@@ -182,8 +182,8 @@ Nội dung hiển thị được tổ chức theo các trạng thái. Khi hệ t
 
 ```text
 +----------------+
-| NHIET: 28.50 C |
-| DO AM: 65.20 % |
+| NHIET DO: 28.50 C |
+| DO AM: 65.20 %    |
 +----------------+
 ```
 
@@ -218,7 +218,7 @@ Luồng điều khiển:
    Đèn / tải 220V
 ```
 
-Phần MCU chỉ xử lý tín hiệu điều khiển điện áp thấp; tải 220V phải được bố trí và cách ly phù hợp với thiết kế phần cứng.
+Phần MCU chỉ xử lý tín hiệu điều khiển điện áp thấp; đèn cảnh báo 220V phải được bố trí và cách ly phù hợp với thiết kế phần cứng.
 
 ### 6. Truyền dữ liệu UART lên PC
 
