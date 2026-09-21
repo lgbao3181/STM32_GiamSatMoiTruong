@@ -95,7 +95,7 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 
 | Tín hiệu | Chức năng | Kết nối MCU | Ghi chú |
 | -------- | --------- | ----------- | ---------------------------------------------- |
-| **DO** | Digital Output | **GPIO PA3** | Firmware đọc trạng thái số để xác định cảnh báo gas; tín hiệu phải phù hợp mức 3.3V trước khi vào MCU |
+| **DO** | Digital Output | **GPIO PA3** | Tín hiệu phải đi qua mạch chuyển mức 5V -> 3.3V trước khi vào MCU |
 | VCC | Nguồn | 5V | Theo module MQ-2 |
 | GND | Mass | GND | Nối chung với hệ thống |
 
