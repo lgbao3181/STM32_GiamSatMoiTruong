@@ -30,7 +30,11 @@ Mục tiêu của dự án là xây dựng một hệ thống giám sát thực 
 
 ## Video minh họa
 
-[![Xem video](https://img.youtube.com/vi/TBA_9MDTWb8/hqdefault.jpg)](https://youtube.com/shorts/TBA_9MDTWb8)
+
+
+https://github.com/user-attachments/assets/8e566ba1-eada-4bce-8f40-15832d237c19
+
+
 
 ---
 
