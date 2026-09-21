@@ -99,7 +99,9 @@ Sơ đồ nguyên lý thể hiện các khối chức năng chính của hệ th
 | VCC | Nguồn | 5V | Theo module MQ-2 |
 | GND | Mass | GND | Nối chung với hệ thống |
 
-> MQ-2 trong project này được sử dụng qua **ngõ ra số DO**, không dùng ADC để tính nồng độ. Vì module MQ-2 có thể sử dụng nguồn 5V, tín hiệu DO cần được đưa qua mạch chuyển mức/giảm áp để bảo đảm mức logic phù hợp với GPIO 3.3V của STM32.
+> Trong project này, cảm biến MQ-2 được sử dụng thông qua ngõ ra số DO, không sử dụng ADC để đo hoặc tính toán nồng độ khí gas. Module MQ-2 được cấp nguồn 5V, do đó tín hiệu DO cần được đưa qua mạch chuyển mức logic/giảm áp trước khi kết nối với GPIO 3.3V của STM32F103C8T6.
+
+> Về trạng thái tín hiệu, DO = 1 khi chưa phát hiện khí gas vượt ngưỡng cài đặt và DO = 0 khi phát hiện nồng độ khí vượt ngưỡng. Ngưỡng cảnh báo có thể được điều chỉnh bằng biến trở trên module MQ-2.
 
 ### Relay 5V – STM32F103C8T6
 
